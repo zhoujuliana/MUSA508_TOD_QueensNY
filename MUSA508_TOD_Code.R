@@ -1,15 +1,10 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
 # 9/16/2020
-# Student: Juliana Zhou (collaborating with Julian Hartwell)
-
-# Note that 2000 decennial census API endpoints are down at the moment,
-# This code replaces 2000 API data with 2009 so that the demo runs smoothly
-# In the event the API is not up by class time
-
-# Please consult the original Bookdown for the relevant content to contextualize
-# This code - https://urbanspatial.github.io/PublicPolicyAnalytics/
+# Students: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
+# Clear environment
+rm(list = ls(all.names = TRUE)) 
 
 # Load Libraries
 
@@ -82,24 +77,16 @@ palette5 <- c("#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac")
 
 # Load census API key
 
-census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE, install = TRUE)
+census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
 # ---- Year 2009 tracts -----
-
-# We run our year 2000 code using 2009 ACS (and ACS variables from our 2017 list)
-# Notice this returns "long" data - let's examine it
 
 tracts09 <-  
   get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
                                              "B15001_009E","B19013_001E","B25058_001E",
                                              "B06012_002E"), 
           year=2009, state=36, county=081, geometry=T) %>% 
-  #Can also write in state abbrev and county name as string (e.g., state="PA", county="Philadelphia")
-  st_transform('ESRI:102728')
-
-
-# Wide data vs long data (and spread vs gather)
-# moe = Margin of Error
+  st_transform('ESRI:102318')
 
 # https://www.garrickadenbuie.com/project/tidyexplain/images/tidyr-spread-gather.gif
 
@@ -164,7 +151,7 @@ D <-
   scale_fill_manual(values = palette5,
                     labels = qBr(totalPop09, "estimate"),
                     name = "Popluation\n(Quintile Breaks)") +
-  labs(title = "Total Population", subtitle = "Philadelphia; 2009") +
+  labs(title = "Total Population", subtitle = "New York; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
 
 # Let's "spread" the data into wide form
@@ -203,18 +190,18 @@ tracts09 <-
 # This saves us the trouble of using "spread"
 
 tracts17 <- 
-  get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
-                                             "B15001_009E","B19013_001E","B25058_001E",
-                                             "B06012_002E"), 
-          year=2017, state=42, county=101, geometry=T, output="wide") %>%
-  st_transform('ESRI:102728') %>%
-  rename(TotalPop = B25026_001E, 
-         Whites = B02001_002E,
-         FemaleBachelors = B15001_050E, 
-         MaleBachelors = B15001_009E,
-         MedHHInc = B19013_001E, 
-         MedRent = B25058_001E,
-         TotalPoverty = B06012_002E) %>%
+  get_acs(geography = "tract", variables = c("B25026_001","B02001_002","B15001_050",
+                                             "B15001_009","B19013_001","B25058_001",
+                                             "B06012_002"), 
+          year=2018, state=36, county=081, geometry=T) %>% 
+  st_transform('ESRI:102318') %>%
+  rename(TotalPop = B25026_001, 
+         Whites = B02001_002,
+         FemaleBachelors = B15001_050, 
+         MaleBachelors = B15001_009,
+         MedHHInc = B19013_001, 
+         MedRent = B25058_001,
+         TotalPoverty = B06012_002) %>%
   dplyr::select(-NAME, -starts_with("B")) %>%
   mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop,0),
          pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop),0),
@@ -229,41 +216,49 @@ allTracts <- rbind(tracts09,tracts17)
 
 # ---- Wrangling Transit Open Data -----
 
-septaStops <- 
+MTAStops <- 
   rbind(
-    st_read("https://opendata.arcgis.com/datasets/8c6e2575c8ad46eb887e6bb35825e1a6_0.geojson") %>% 
-      mutate(Line = "El") %>%
-      select(Station, Line),
-    st_read("https://opendata.arcgis.com/datasets/2e9037fd5bef406488ffe5bb67d21312_0.geojson") %>%
-      mutate(Line ="Broad_St") %>%
-      select(Station, Line)) %>%
+    st_read("https://data.cityofnewyork.us/resource/kk4q-3rt2.geojson") %>% 
+      select(name, line)) %>%
   st_transform(st_crs(tracts09))  
+
+# Create Queens boundary multipolygon to subset/select only subway stations in Queens
+
+Boundary <- 
+  rbind(
+    st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson"))
+
+QnsBoundary <- subset(Boundary, boro_name == "Queens")
+
+ms_clip(
+  MTAStops,
+  clip = QnsBoundary)
 
 # Let's visualize it
 
 ggplot() + 
   geom_sf(data=st_union(tracts09)) +
-  geom_sf(data=septaStops, 
-          aes(colour = Line), 
+  geom_sf(data=MTAStops, 
+          #aes(colour = Line), 
           show.legend = "point", size= 2) +
-  scale_colour_manual(values = c("orange","blue")) +
-  labs(title="Septa Stops", 
-       subtitle="Philadelphia, PA", 
-       caption="Figure 2.5") +
+  #scale_colour_manual(values = c("orange","blue")) +
+  labs(title="MTA Stops", 
+       subtitle="Queens, NY", 
+       caption="Figure x.x") +
   mapTheme()
 
-# --- Relating SEPTA Stops and Tracts ----
+# --- Relating MTA Stops and Queens County Tracts ----
 
 # Create buffers (in feet - note the CRS) around Septa stops -
 # Both a buffer for each stop, and a union of the buffers...
 # and bind these objects together
 
-septaBuffers <- 
+MTA_Buffer <- 
   rbind(
-    st_buffer(septaStops, 2640) %>%
+    st_buffer(MTAStops, 2640) %>%
       mutate(Legend = "Buffer") %>%
       dplyr::select(Legend),
-    st_union(st_buffer(septaStops, 2640)) %>%
+    st_union(st_buffer(MTAStops, 2640)) %>%
       st_sf() %>%
       mutate(Legend = "Unioned Buffer"))
 
