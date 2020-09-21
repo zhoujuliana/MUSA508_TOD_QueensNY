@@ -1,10 +1,15 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
-# 9/16/2020
-# Students: Juliana Zhou & Julian Hartwell
+# 9/20/2020
+# Student: Juliana Zhou (collaborating with Julian Hartwell)
+
+# Note that 2000 decennial census API endpoints are down at the moment,
+# This code replaces 2000 API data with 2009 so that the demo runs smoothly
+# In the event the API is not up by class time
+
+# Please consult the original Bookdown for the relevant content to contextualize
+# This code - https://urbanspatial.github.io/PublicPolicyAnalytics/
 
 #---- Set Up ----
-# Clear environment
-rm(list = ls(all.names = TRUE)) 
 
 # Load Libraries
 
@@ -79,7 +84,13 @@ palette5 <- c("#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac")
 
 census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
+
 # ---- Year 2009 tracts -----
+
+# We run our year 2000 code using 2009 ACS (and ACS variables from our 2017 list)
+# Notice this returns "long" data - let's examine it
+
+?load_variables
 
 tracts09 <-  
   get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
@@ -88,9 +99,7 @@ tracts09 <-
           year=2009, state=36, county=081, geometry=T) %>% 
   st_transform('ESRI:102318')
 
-# https://www.garrickadenbuie.com/project/tidyexplain/images/tidyr-spread-gather.gif
 
-# Referencing the data by matrix notation, and learning about the data...
 # Let's examine each variable and the elements of an sf object
 
 tracts09[1:3,]
@@ -100,7 +109,6 @@ tracts09[1:3,]
 table(tracts09$variable)
 
 # We create a new data frame consisting only of population
-
 totalPop09 <-
   tracts09 %>%
   filter(variable == "B25026_001")
@@ -114,6 +122,8 @@ names(totalPop09)
 head(totalPop09)
 
 glimpse(totalPop09)
+
+view(tracts09)
 
 # Use the base R plotting function to examine it visually
 
@@ -151,8 +161,10 @@ D <-
   scale_fill_manual(values = palette5,
                     labels = qBr(totalPop09, "estimate"),
                     name = "Popluation\n(Quintile Breaks)") +
-  labs(title = "Total Population", subtitle = "New York; 2009") +
+  labs(title = "Total Population", subtitle = "Queens Count, NY; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
+
+D
 
 # Let's "spread" the data into wide form
 
@@ -170,6 +182,8 @@ tracts09 <-
          TotalPoverty = B06012_002)
 
 st_drop_geometry(tracts09)[1:3,]
+
+view(tracts09)
 
 # Let's create new rate variables using mutate
 
@@ -189,29 +203,30 @@ tracts09 <-
 # Notice that we are getting "wide" data here in the first place
 # This saves us the trouble of using "spread"
 
-tracts17 <- 
+tracts16 <- 
   get_acs(geography = "tract", variables = c("B25026_001","B02001_002","B15001_050",
                                              "B15001_009","B19013_001","B25058_001",
                                              "B06012_002"), 
-          year=2018, state=36, county=081, geometry=T) %>% 
+          year=2016, state=36, county=081, geometry=T, output="wide") %>%
   st_transform('ESRI:102318') %>%
-  rename(TotalPop = B25026_001, 
-         Whites = B02001_002,
-         FemaleBachelors = B15001_050, 
-         MaleBachelors = B15001_009,
-         MedHHInc = B19013_001, 
-         MedRent = B25058_001,
-         TotalPoverty = B06012_002) %>%
+  rename(TotalPop = B25026_001E, 
+         Whites = B02001_002E,
+         FemaleBachelors = B15001_050E, 
+         MaleBachelors = B15001_009E,
+         MedHHInc = B19013_001E, 
+         MedRent = B25058_001E,
+         TotalPoverty = B06012_002E) %>%
   dplyr::select(-NAME, -starts_with("B")) %>%
   mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop,0),
          pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop),0),
          pctPoverty = ifelse(TotalPop > 0, TotalPoverty / TotalPop, 0),
-         year = "2017") %>%
+         year = "2016") %>%
   dplyr::select(-Whites, -FemaleBachelors, -MaleBachelors, -TotalPoverty) 
+
 
 # --- Combining 09 and 17 data ----
 
-allTracts <- rbind(tracts09,tracts17)
+allTracts <- rbind(tracts09,tracts16)
 
 
 # ---- Wrangling Transit Open Data -----
