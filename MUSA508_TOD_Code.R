@@ -3,6 +3,8 @@
 # Students: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
+# Clear environment
+rm(list = ls(all.names = TRUE)) 
 
 # Load Libraries
 
@@ -10,8 +12,6 @@ library(tidyverse)
 library(tidycensus)
 library(sf)
 library(kableExtra)
-library(RSocrata)
-library(geojsonio)
 
 options(scipen=999)
 options(tigris_class = "sf")
@@ -77,7 +77,7 @@ palette5 <- c("#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac")
 
 # Load census API key
 
-census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE, install = TRUE)
+census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
 # ---- Year 2009 tracts -----
 
@@ -151,7 +151,7 @@ D <-
   scale_fill_manual(values = palette5,
                     labels = qBr(totalPop09, "estimate"),
                     name = "Popluation\n(Quintile Breaks)") +
-  labs(title = "Total Population", subtitle = "Philadelphia; 2009") +
+  labs(title = "Total Population", subtitle = "New York; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
 
 # Let's "spread" the data into wide form
@@ -190,18 +190,18 @@ tracts09 <-
 # This saves us the trouble of using "spread"
 
 tracts17 <- 
-  get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
-                                             "B15001_009E","B19013_001E","B25058_001E",
-                                             "B06012_002E"), #"B25026_001E" doesn't exist
+  get_acs(geography = "tract", variables = c("B25026_001","B02001_002","B15001_050",
+                                             "B15001_009","B19013_001","B25058_001",
+                                             "B06012_002"), 
           year=2018, state=36, county=081, geometry=T) %>% 
   st_transform('ESRI:102318') %>%
-  rename(TotalPop = B25026_001E, 
-         Whites = B02001_002E,
-         FemaleBachelors = B15001_050E, 
-         MaleBachelors = B15001_009E,
-         MedHHInc = B19013_001E, 
-         MedRent = B25058_001E,
-         TotalPoverty = B06012_002E) %>%
+  rename(TotalPop = B25026_001, 
+         Whites = B02001_002,
+         FemaleBachelors = B15001_050, 
+         MaleBachelors = B15001_009,
+         MedHHInc = B19013_001, 
+         MedRent = B25058_001,
+         TotalPoverty = B06012_002) %>%
   dplyr::select(-NAME, -starts_with("B")) %>%
   mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop,0),
          pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop),0),
