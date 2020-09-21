@@ -231,23 +231,25 @@ allTracts <- rbind(tracts09,tracts16)
 
 # ---- Wrangling Transit Open Data -----
 
+# Create Queens boundary multipolygon to subset/select only subway stations in Queens
 MTAStops <- 
   rbind(
     st_read("https://data.cityofnewyork.us/resource/kk4q-3rt2.geojson") %>% 
       select(name, line)) %>%
-  st_transform(st_crs(tracts09))  
+  st_transform('ESRI:102318')
 
 # Create Queens boundary multipolygon to subset/select only subway stations in Queens
 
 Boundary <- 
-  rbind(
-    st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson"))
+  st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
+  dplyr::filter(boro_name == "Queens")
 
-QnsBoundary <- subset(Boundary, boro_name == "Queens")
+QnsMTA_clip <- 
+  st_intersection(MTAStops, Boundary) %>%
+  dplyr::select(TotalPop) %>%
+  mutate(Selection_Type = "Clip")
 
-ms_clip(
-  MTAStops,
-  clip = QnsBoundary)
+?st_intersection()
 
 # Let's visualize it
 
@@ -286,6 +288,16 @@ ggplot() +
   facet_wrap(~Legend) + 
   labs(caption = "Figure 2.6") +
   mapTheme()
+
+# ---- Crime data ----
+
+QNScrimedat <-  
+  rbind(
+  st_read("https://data.cityofnewyork.us/resource/qgea-i56i.geojson") %>%
+  dplyr::select(rpt_dt, boro_nm, ky_cd, ofns_desc, law_cat_cd, x_coord_cd, y_coord_cd, latitude, longitude, vic_sex) %>%
+  dplyr::filter(boro_nm == "QUEENS") %>%
+  st_transform('ESRI:102318') %>%
+  st_sf())
 
 # ---- Spatial operations ----
 
