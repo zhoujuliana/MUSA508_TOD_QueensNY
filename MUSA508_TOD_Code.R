@@ -87,10 +87,7 @@ census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
 # ---- Year 2009 tracts -----
 
-# We run our year 2000 code using 2009 ACS (and ACS variables from our 2017 list)
-# Notice this returns "long" data - let's examine it
-
-?load_variables
+# Get 2009 ACS 5-Year data
 
 tracts09 <-  
   get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
@@ -100,15 +97,11 @@ tracts09 <-
   st_transform('ESRI:102318')
 
 
-# Let's examine each variable and the elements of an sf object
-
-tracts09[1:3,]
-
-# Look at a table of variables
+# Check tracts09 
 
 table(tracts09$variable)
 
-# We create a new data frame consisting only of population
+# Create new data frame consisting only of total population
 totalPop09 <-
   tracts09 %>%
   filter(variable == "B25026_001")
@@ -144,7 +137,7 @@ A <-
 
 B <- 
   ggplot() +
-  geom_sf(data = totalPop09, aes(fill = Bq5(estimate))) +
+  geom_sf(data = totalPop09, aes(fill = qBr(estimate))) +
   theme(plot.title = element_text(size=22))
 
 C <-
@@ -164,7 +157,7 @@ D <-
   labs(title = "Total Population", subtitle = "Queens Count, NY; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
 
-D
+B
 
 # Let's "spread" the data into wide form
 
@@ -244,12 +237,12 @@ Boundary <-
   st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
   dplyr::filter(boro_name == "Queens")
 
-QnsMTA_clip <- 
-  st_intersection(MTAStops, Boundary) %>%
-  dplyr::select(TotalPop) %>%
-  mutate(Selection_Type = "Clip")
 
-?st_intersection()
+QnsMTA_clip <- 
+  st_intersection(Boundary, MTAStops) %>%
+  dplyr::select(name) %>%
+  mutate(Selection_Type = "Clip") %>%
+  st_transform('ESRI:102318')
 
 # Let's visualize it
 
@@ -272,10 +265,10 @@ ggplot() +
 
 MTA_Buffer <- 
   rbind(
-    st_buffer(MTAStops, 2640) %>%
+    st_buffer(MTAStops, 1760) %>%
       mutate(Legend = "Buffer") %>%
       dplyr::select(Legend),
-    st_union(st_buffer(MTAStops, 2640)) %>%
+    st_union(st_buffer(MTAStops, 1760)) %>%
       st_sf() %>%
       mutate(Legend = "Unioned Buffer"))
 
@@ -283,8 +276,8 @@ MTA_Buffer <-
 # "facet_wrap" plot showing each
 
 ggplot() +
-  geom_sf(data=septaBuffers) +
-  geom_sf(data=septaStops, show.legend = "point") +
+  geom_sf(data=MTA_Buffer) +
+  geom_sf(data=MTAStops, show.legend = "point") +
   facet_wrap(~Legend) + 
   labs(caption = "Figure 2.6") +
   mapTheme()
@@ -305,7 +298,7 @@ QNScrimedat <-
 # and discuss which is likely appropriate for this analysis
 
 # Create an sf object with ONLY the unioned buffer
-buffer <- filter(septaBuffers, Legend=="Unioned Buffer")
+buffer <- filter(MTA_Buffer, Legend=="Unioned Buffer")
 
 # Clip the 2009 tracts ... by seeing which tracts intersect (st_intersection)
 # with the buffer and clipping out only those areas
@@ -340,7 +333,7 @@ selectCentroids <-
 # join, and add them all together.
 # Do this operation and then examine it.
 # What represents the joins/doesn't join dichotomy?
-# Note that this contains a correct 2009-2017 inflation calculation
+# Note that this contains a correct 2009-2016 inflation calculation
 
 allTracts.group <- 
   rbind(
@@ -354,7 +347,7 @@ allTracts.group <-
       left_join(allTracts) %>%
       st_sf() %>%
       mutate(TOD = "Non-TOD")) %>%
-  mutate(MedRent.inf = ifelse(year == "2009", MedRent * 1.14, MedRent)) 
+  mutate(MedRent.inf = ifelse(year == "2009", MedRent * 1.118, MedRent)) 
 
 # ---- Breakout Room Test ----
 # Can you try to create the maps seen in the text?
