@@ -1,13 +1,6 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
 # 9/20/2020
-# Student: Juliana Zhou (collaborating with Julian Hartwell)
-
-# Note that 2000 decennial census API endpoints are down at the moment,
-# This code replaces 2000 API data with 2009 so that the demo runs smoothly
-# In the event the API is not up by class time
-
-# Please consult the original Bookdown for the relevant content to contextualize
-# This code - https://urbanspatial.github.io/PublicPolicyAnalytics/
+# By: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
 
@@ -96,7 +89,6 @@ tracts09 <-
           year=2009, state=36, county=081, geometry=T) %>% 
   st_transform('ESRI:102318')
 
-
 # Check tracts09 
 
 table(tracts09$variable)
@@ -106,7 +98,7 @@ totalPop09 <-
   tracts09 %>%
   filter(variable == "B25026_001")
 
-# Let's examine it
+# Examine tracts09
 
 nrow(totalPop09)
 
