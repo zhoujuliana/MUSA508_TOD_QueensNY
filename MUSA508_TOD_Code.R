@@ -1,10 +1,8 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
-# 9/16/2020
-# Students: Juliana Zhou & Julian Hartwell
+# 9/20/2020
+# By: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
-# Clear environment
-rm(list = ls(all.names = TRUE)) 
 
 # Load Libraries
 
@@ -79,7 +77,10 @@ palette5 <- c("#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac")
 
 census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
+
 # ---- Year 2009 tracts -----
+
+# Get 2009 ACS 5-Year data
 
 tracts09 <-  
   get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
@@ -88,24 +89,16 @@ tracts09 <-
           year=2009, state=36, county=081, geometry=T) %>% 
   st_transform('ESRI:102318')
 
-# https://www.garrickadenbuie.com/project/tidyexplain/images/tidyr-spread-gather.gif
-
-# Referencing the data by matrix notation, and learning about the data...
-# Let's examine each variable and the elements of an sf object
-
-tracts09[1:3,]
-
-# Look at a table of variables
+# Check tracts09 
 
 table(tracts09$variable)
 
-# We create a new data frame consisting only of population
-
+# Create new data frame consisting only of total population
 totalPop09 <-
   tracts09 %>%
   filter(variable == "B25026_001")
 
-# Let's examine it
+# Examine tracts09
 
 nrow(totalPop09)
 
@@ -114,6 +107,8 @@ names(totalPop09)
 head(totalPop09)
 
 glimpse(totalPop09)
+
+view(tracts09)
 
 # Use the base R plotting function to examine it visually
 
@@ -134,7 +129,7 @@ A <-
 
 B <- 
   ggplot() +
-  geom_sf(data = totalPop09, aes(fill = Bq5(estimate))) +
+  geom_sf(data = totalPop09, aes(fill = qBr(estimate))) +
   theme(plot.title = element_text(size=22))
 
 C <-
@@ -151,8 +146,10 @@ D <-
   scale_fill_manual(values = palette5,
                     labels = qBr(totalPop09, "estimate"),
                     name = "Popluation\n(Quintile Breaks)") +
-  labs(title = "Total Population", subtitle = "New York; 2009") +
+  labs(title = "Total Population", subtitle = "Queens Count, NY; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
+
+B
 
 # Let's "spread" the data into wide form
 
@@ -170,6 +167,8 @@ tracts09 <-
          TotalPoverty = B06012_002)
 
 st_drop_geometry(tracts09)[1:3,]
+
+view(tracts09)
 
 # Let's create new rate variables using mutate
 
@@ -189,50 +188,53 @@ tracts09 <-
 # Notice that we are getting "wide" data here in the first place
 # This saves us the trouble of using "spread"
 
-tracts17 <- 
+tracts16 <- 
   get_acs(geography = "tract", variables = c("B25026_001","B02001_002","B15001_050",
                                              "B15001_009","B19013_001","B25058_001",
                                              "B06012_002"), 
-          year=2018, state=36, county=081, geometry=T) %>% 
+          year=2016, state=36, county=081, geometry=T, output="wide") %>%
   st_transform('ESRI:102318') %>%
-  rename(TotalPop = B25026_001, 
-         Whites = B02001_002,
-         FemaleBachelors = B15001_050, 
-         MaleBachelors = B15001_009,
-         MedHHInc = B19013_001, 
-         MedRent = B25058_001,
-         TotalPoverty = B06012_002) %>%
+  rename(TotalPop = B25026_001E, 
+         Whites = B02001_002E,
+         FemaleBachelors = B15001_050E, 
+         MaleBachelors = B15001_009E,
+         MedHHInc = B19013_001E, 
+         MedRent = B25058_001E,
+         TotalPoverty = B06012_002E) %>%
   dplyr::select(-NAME, -starts_with("B")) %>%
   mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop,0),
          pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop),0),
          pctPoverty = ifelse(TotalPop > 0, TotalPoverty / TotalPop, 0),
-         year = "2017") %>%
+         year = "2016") %>%
   dplyr::select(-Whites, -FemaleBachelors, -MaleBachelors, -TotalPoverty) 
+
 
 # --- Combining 09 and 17 data ----
 
-allTracts <- rbind(tracts09,tracts17)
+allTracts <- rbind(tracts09,tracts16)
 
 
 # ---- Wrangling Transit Open Data -----
 
+# Create Queens boundary multipolygon to subset/select only subway stations in Queens
 MTAStops <- 
   rbind(
     st_read("https://data.cityofnewyork.us/resource/kk4q-3rt2.geojson") %>% 
       select(name, line)) %>%
-  st_transform(st_crs(tracts09))  
+  st_transform('ESRI:102318')
 
 # Create Queens boundary multipolygon to subset/select only subway stations in Queens
 
 Boundary <- 
-  rbind(
-    st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson"))
+  st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
+  dplyr::filter(boro_name == "Queens")
 
-QnsBoundary <- subset(Boundary, boro_name == "Queens")
 
-ms_clip(
-  MTAStops,
-  clip = QnsBoundary)
+QnsMTA_clip <- 
+  st_intersection(Boundary, MTAStops) %>%
+  dplyr::select(name) %>%
+  mutate(Selection_Type = "Clip") %>%
+  st_transform('ESRI:102318')
 
 # Let's visualize it
 
@@ -255,10 +257,10 @@ ggplot() +
 
 MTA_Buffer <- 
   rbind(
-    st_buffer(MTAStops, 2640) %>%
+    st_buffer(MTAStops, 1760) %>%
       mutate(Legend = "Buffer") %>%
       dplyr::select(Legend),
-    st_union(st_buffer(MTAStops, 2640)) %>%
+    st_union(st_buffer(MTAStops, 1760)) %>%
       st_sf() %>%
       mutate(Legend = "Unioned Buffer"))
 
@@ -266,11 +268,21 @@ MTA_Buffer <-
 # "facet_wrap" plot showing each
 
 ggplot() +
-  geom_sf(data=septaBuffers) +
-  geom_sf(data=septaStops, show.legend = "point") +
+  geom_sf(data=MTA_Buffer) +
+  geom_sf(data=MTAStops, show.legend = "point") +
   facet_wrap(~Legend) + 
   labs(caption = "Figure 2.6") +
   mapTheme()
+
+# ---- Crime data ----
+
+QNScrimedat <-  
+  rbind(
+  st_read("https://data.cityofnewyork.us/resource/qgea-i56i.geojson") %>%
+  dplyr::select(rpt_dt, boro_nm, ky_cd, ofns_desc, law_cat_cd, x_coord_cd, y_coord_cd, latitude, longitude, vic_sex) %>%
+  dplyr::filter(boro_nm == "QUEENS") %>%
+  st_transform('ESRI:102318') %>%
+  st_sf())
 
 # ---- Spatial operations ----
 
@@ -278,7 +290,7 @@ ggplot() +
 # and discuss which is likely appropriate for this analysis
 
 # Create an sf object with ONLY the unioned buffer
-buffer <- filter(septaBuffers, Legend=="Unioned Buffer")
+buffer <- filter(MTA_Buffer, Legend=="Unioned Buffer")
 
 # Clip the 2009 tracts ... by seeing which tracts intersect (st_intersection)
 # with the buffer and clipping out only those areas
@@ -313,7 +325,7 @@ selectCentroids <-
 # join, and add them all together.
 # Do this operation and then examine it.
 # What represents the joins/doesn't join dichotomy?
-# Note that this contains a correct 2009-2017 inflation calculation
+# Note that this contains a correct 2009-2016 inflation calculation
 
 allTracts.group <- 
   rbind(
@@ -327,7 +339,7 @@ allTracts.group <-
       left_join(allTracts) %>%
       st_sf() %>%
       mutate(TOD = "Non-TOD")) %>%
-  mutate(MedRent.inf = ifelse(year == "2009", MedRent * 1.14, MedRent)) 
+  mutate(MedRent.inf = ifelse(year == "2009", MedRent * 1.118, MedRent)) 
 
 # ---- Breakout Room Test ----
 # Can you try to create the maps seen in the text?
