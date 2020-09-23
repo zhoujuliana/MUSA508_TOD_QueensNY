@@ -149,8 +149,6 @@ D <-
   labs(title = "Total Population", subtitle = "Queens Count, NY; 2009") +
   mapTheme() + theme(plot.title = element_text(size=22))
 
-B
-
 # Let's "spread" the data into wide form
 
 tracts09 <- 
@@ -183,7 +181,7 @@ tracts09 <-
 # Tracts 2009 is now complete. Let's grab 2017 tracts and do a congruent
 # set of operations
 
-# ---- 2017 Census Data -----
+# ---- 2016 Census Data -----
 
 # Notice that we are getting "wide" data here in the first place
 # This saves us the trouble of using "spread"
@@ -223,18 +221,12 @@ MTAStops <-
       select(name, line)) %>%
   st_transform('ESRI:102318')
 
-# Create Queens boundary multipolygon to subset/select only subway stations in Queens
+# Subset/select only subway stations in Queens and check
 
-Boundary <- 
-  st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
-  dplyr::filter(boro_name == "Queens")
+QnsMTA_clip <- MTAStops[tracts09,]
 
-
-QnsMTA_clip <- 
-  st_intersection(Boundary, MTAStops) %>%
-  dplyr::select(name) %>%
-  mutate(Selection_Type = "Clip") %>%
-  st_transform('ESRI:102318')
+ggplot()+
+  geom_sf(data=QnsMTA_clip)
 
 # Let's visualize it
 
