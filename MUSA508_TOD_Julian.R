@@ -224,3 +224,68 @@ tracts16 <-
   dplyr::select(-Whites, -FemaleBachelors, -MaleBachelors, -TotalPoverty) 
 
 view(tracts16)
+
+#binding these together
+allTracts <- rbind(tracts09,tracts16)
+view(allTracts)
+
+# ---- Wrangling Transit Open Data -----
+
+MTAStops <- 
+  rbind(
+    st_read("https://data.cityofnewyork.us/resource/kk4q-3rt2.geojson") %>% 
+      select(name, line)) %>%
+  st_transform(st_crs(tracts09))
+
+view(MTAStops)
+
+#Creating Queens boundary multipolygon to select subway stations only in Queens
+Boundary <-
+  st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
+  dplyr::filter(boro_name == "Queens")
+
+
+
+#All crimes in Queens, 2006-present
+QNScrimedat <- 
+    st_read("https://data.cityofnewyork.us/resource/qgea-i56i.geojson") %>%
+    dplyr::filter(boro_nm == "QUEENS") %>%
+    select(rpt_dt, boro_nm, ky_cd, ofns_desc,x_coord_cd,y_coord_cd, latitude, longitude, geometry,vic_sex,law_cat_cd) %>%
+  st_transform('ESRI:102318') %>%
+  st_sf()
+
+View(QNScrimedat)
+
+
+#Julian's newly added code....
+QNScrimedat$Year <- format(as.Date(QNScrimedat$rpt_dt, format="%Y/%m/%d"),"%Y")
+View(QNScrimedat)
+
+
+
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = TOD)) +
+  geom_sf(data=QNScrimedat, show.legend = "point") +
+  mapTheme()
+
+
+
+#CrimeDataFilter by Year
+#Clips subway lines for Queens
+#Create buffers and unionize them
+
+
+#Questions for Ken
+#1. Mapping Crime Data
+  #How to do mapping by points
+  #WestHempfield_BuildingsPlot from chapter...no code
+  #Multiple layers aka 2 or 3 geom_sf
+  #Do I need two different DFs (2009 & 2016) for mapping?
+#2. Buffer chart looks like only buffers
+    
+  
+
+
+
+
