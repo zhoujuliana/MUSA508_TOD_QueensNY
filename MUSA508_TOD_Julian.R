@@ -5,7 +5,6 @@
 #---- Set Up ----
 
 install.packages("viridis")
-install.packages("ppaR")
 
 # Load Libraries
 
@@ -14,7 +13,6 @@ library(tidycensus)
 library(sf)
 library(kableExtra)
 library(viridis)
-library(ppaR)
 
 options(scipen=999)
 options(tigris_class = "sf")
@@ -307,17 +305,27 @@ kable(allTracts.Summary) %>%
 
 
 # ---- Part 6. Line Plot as Function of Distance ----
-?multipleringbuffer
+
 allTracts.rings <-
-  st_join(st_centroid(dplyr::select(allTracts, GEOID, year)), 
-          multipleRingBuffer(st_union(QnsMTA), 47520, 2640)) %>%
+  st_join(st_centroid(dplyr::select(allTracts, GEOID, year)),
+          multipleRingBuffer(st_union(MTAStops), 47520, 2640)) %>%
   st_drop_geometry() %>%
-  left_join(dplyr::select(allTracts, GEOID, MedRent, year), 
+  left_join(dplyr::select(allTracts, GEOID, MedRent, year),
             by=c("GEOID"="GEOID", "year"="year")) %>%
   st_sf() %>%
   mutate(distance = distance / 5280) #convert to miles
 
-view(allTracts.rings)
+allTracts.rings_summary <-
+  allTracts.rings %>%
+  st_drop_geometry() %>%
+  group_by(distance, year) %>%
+  summarize(Rent = mean(MedRent, na.rm=T)) 
+
+#graph
+ggplot(data=allTracts.rings_summary,
+       aes(x = distance, y = MedRent, colour = year)) +
+  geom_point()
+
 
 # ---- Part 7. Crime Data ----
 
