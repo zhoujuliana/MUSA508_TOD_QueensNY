@@ -1,15 +1,10 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
-# 9/16/2020
-# Student: Julian Hartwell (collaborating with Juliana Zhou)
-
-# Note that 2000 decennial census API endpoints are down at the moment,
-# This code replaces 2000 API data with 2009 so that the demo runs smoothly
-# In the event the API is not up by class time
-
-# Please consult the original Bookdown for the relevant content to contextualize
-# This code - https://urbanspatial.github.io/PublicPolicyAnalytics/
+# 9/20/2020
+# By: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
+
+install.packages("viridis")
 
 # Load Libraries
 
@@ -17,6 +12,7 @@ library(tidyverse)
 library(tidycensus)
 library(sf)
 library(kableExtra)
+library(viridis)
 
 options(scipen=999)
 options(tigris_class = "sf")
@@ -82,126 +78,36 @@ palette5 <- c("#f0f9e8","#bae4bc","#7bccc4","#43a2ca","#0868ac")
 
 # Load census API key
 
-census_api_key("1f48fdef7d94278433db3944079dee65c4375f8e", overwrite = TRUE)
+census_api_key("dc04d127e79099d0fa300464507544280121fc3b", overwrite = TRUE)
 
 
-# ---- Year 2009 tracts -----
+# ---- Part 1. Year 2009 tracts -----
 
-# We run our year 2000 code using 2009 ACS (and ACS variables from our 2017 list)
-# Notice this returns "long" data - let's examine it
+# Get 2009 ACS 5-Year data
 
-?load_variables
-
-tracts09 <-  
+tracts09 <- 
   get_acs(geography = "tract", variables = c("B25026_001E","B02001_002E","B15001_050E",
                                              "B15001_009E","B19013_001E","B25058_001E",
                                              "B06012_002E"), 
-          year=2009, state=36, county=081, geometry=T) %>% 
-  st_transform('ESRI:102318')
-
-
-# Let's examine each variable and the elements of an sf object
-
-tracts09[1:3,]
-
-# Look at a table of variables
-
-table(tracts09$variable)
-
-# We create a new data frame consisting only of population
-totalPop09 <-
-  tracts09 %>%
-  filter(variable == "B25026_001")
-
-# Let's examine it
-
-nrow(totalPop09)
-
-names(totalPop09)
-
-head(totalPop09)
-
-glimpse(totalPop09)
-
-view(tracts09)
-
-# Use the base R plotting function to examine it visually
-
-plot(totalPop09)
-
-plot(totalPop09[,5])
-
-# ---- Using ggplot to visualize census data with sf -----
-
-# Each plot adds more and more nuance and information
-
-# Consult the text to understand the symbology schemes
-
-A <- 
-  ggplot() +
-  geom_sf(data = totalPop09, aes(fill = estimate)) +
-  theme(plot.title = element_text(size=22))
-
-B <- 
-  ggplot() +
-  geom_sf(data = totalPop09, aes(fill = Bq5(estimate))) +
-  theme(plot.title = element_text(size=22))
-
-C <-
-  ggplot() +
-  geom_sf(data = totalPop09, aes(fill = q5(estimate))) +
-  scale_fill_manual(values = palette5,
-                    labels = qBr(totalPop09, "estimate"),
-                    name = "Total\nPopluation\n(Quintile Breaks)") +
-  theme(plot.title = element_text(size=22))
-
-D <- 
-  ggplot() +
-  geom_sf(data = totalPop09, aes(fill = q5(estimate))) +
-  scale_fill_manual(values = palette5,
-                    labels = qBr(totalPop09, "estimate"),
-                    name = "Popluation\n(Quintile Breaks)") +
-  labs(title = "Total Population", subtitle = "Queens Count, NY; 2009") +
-  mapTheme() + theme(plot.title = element_text(size=22))
-
-D
-
-# Let's "spread" the data into wide form
-
-tracts09 <- 
-  tracts09 %>%
-  dplyr::select( -NAME, -moe) %>%
-  spread(variable, estimate) %>%
-  dplyr::select(-geometry) %>%
-  rename(TotalPop = B25026_001, 
-         Whites = B02001_002,
-         FemaleBachelors = B15001_050, 
-         MaleBachelors = B15001_009,
-         MedHHInc = B19013_001, 
-         MedRent = B25058_001,
-         TotalPoverty = B06012_002)
-
-st_drop_geometry(tracts09)[1:3,]
-
-view(tracts09)
-
-# Let's create new rate variables using mutate
-
-tracts09 <- 
-  tracts09 %>%
-  mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop, 0),
-         pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop), 0),
+          year=2009, state=36, county=081, geometry=T, output="wide") %>%
+  st_transform('ESRI:102318') %>%
+  rename(TotalPop = B25026_001E, 
+         Whites = B02001_002E,
+         FemaleBachelors = B15001_050E, 
+         MaleBachelors = B15001_009E,
+         MedHHInc = B19013_001E, 
+         MedRent = B25058_001E,
+         TotalPoverty = B06012_002E) %>%
+  dplyr::select(-NAME, -starts_with("B")) %>%
+  mutate(pctWhite = ifelse(TotalPop > 0, Whites / TotalPop,0), #JW: Since we only need 4 indcators, remove?
+         pctBachelors = ifelse(TotalPop > 0, ((FemaleBachelors + MaleBachelors) / TotalPop),0),
          pctPoverty = ifelse(TotalPop > 0, TotalPoverty / TotalPop, 0),
          year = "2009") %>%
-  dplyr::select(-Whites,-FemaleBachelors,-MaleBachelors,-TotalPoverty)
+  dplyr::select(-Whites, -FemaleBachelors, -MaleBachelors, -TotalPoverty) 
 
-# Tracts 2009 is now complete. Let's grab 2017 tracts and do a congruent
-# set of operations
+view(tracts09)
 
-# ---- 2017 Census Data -----
-
-# Notice that we are getting "wide" data here in the first place
-# This saves us the trouble of using "spread"
+# ---- Part 1. 2016 Census Data -----
 
 tracts16 <- 
   get_acs(geography = "tract", variables = c("B25026_001","B02001_002","B15001_050",
@@ -225,67 +131,200 @@ tracts16 <-
 
 view(tracts16)
 
-#binding these together
-allTracts <- rbind(tracts09,tracts16)
-view(allTracts)
 
-# ---- Wrangling Transit Open Data -----
+# --- Part 1. Combining 2009 and 2016 data ----
+
+allTracts <- rbind(tracts09,tracts16)
+
+
+# ---- Part 1. Wrangling Transit Open Data -----
+
+# Read in NYC subway station data 
 
 MTAStops <- 
   rbind(
     st_read("https://data.cityofnewyork.us/resource/kk4q-3rt2.geojson") %>% 
       select(name, line)) %>%
-  st_transform(st_crs(tracts09))
+  st_transform('ESRI:102318')
 
-view(MTAStops)
+# Subset/select only MTA stations in Queens
 
-#Creating Queens boundary multipolygon to select subway stations only in Queens
-Boundary <-
-  st_read("https://data.cityofnewyork.us/resource/7t3b-ywvw.geojson") %>%
-  dplyr::filter(boro_name == "Queens")
+QnsMTA <- MTAStops[tracts09,]
+
+# Check QnsMTA stations
+
+ggplot() + 
+  geom_sf(data=st_union(tracts09)) +
+  geom_sf(data=QnsMTA, 
+          #aes(colour = Line), 
+          show.legend = "point", size= 1) +
+  #scale_colour_manual(values = c("orange","blue")) +
+  labs(title="MTA Stops", 
+       subtitle="Queens, NY", 
+       caption="Figure x.x") +
+  mapTheme()
+
+# --- Part 1. Relating MTA Stops and Queens County Tracts ----
+
+# Create buffers (in feet) around Queens MTA stations, then create union buffer
+
+QnsMTA_buffer <- 
+  rbind(
+    st_buffer(QnsMTA, 1320) %>%
+      mutate(Legend = "Buffer") %>%
+      dplyr::select(Legend),
+    st_union(st_buffer(QnsMTA, 1320)) %>%
+      st_sf() %>%
+      mutate(Legend = "Unioned Buffer"))
+
+# Visualize both buffers and union buffer using "facet_wrap" plot
+
+ggplot() +
+  geom_sf(data=QnsMTA_buffer) +
+  geom_sf(data=QnsMTA, show.legend = "point") +
+  facet_wrap(~Legend) + 
+  labs(caption = "Figure 2.6") +
+  mapTheme()
+
+# Create an sf object with ONLY the unioned buffer
+buffer <- filter(QnsMTA_buffer, Legend=="Unioned Buffer")
+
+# ---- Part 2. Indicator Maps ----
+
+# Create TOD & non-TOD areas using centroid join
+# Includes 2009-2016 inflation rate for MedRent variable: 1.118
+
+allTracts.group <- 
+  rbind(
+    st_centroid(allTracts)[buffer,] %>%
+      st_drop_geometry() %>%
+      left_join(allTracts) %>%
+      st_sf() %>%
+      mutate(TOD = "TOD"),
+    st_centroid(allTracts)[buffer, op = st_disjoint] %>%
+      st_drop_geometry() %>%
+      left_join(allTracts) %>%
+      st_sf() %>%
+      mutate(TOD = "Non-TOD")) %>%
+  mutate(MedRent.inf = ifelse(year == "2009", MedRent * 1.118, MedRent)) 
+
+# Time/Space map of 2009 & 2016 TOD tracts
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = TOD)) +
+  scale_fill_manual(values = c("#bae4bc","#43a2ca"),
+                    name = "TOD") +
+  labs(title = "Time/Space Groups") +
+  facet_wrap(~year)+
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
+
+# Indicator Map #1: Median rent in 2009 & 2016, showing TOD
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = q5(MedRent.inf)), lwd = 0) +
+  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  scale_fill_manual(values = palette5,
+                    labels = qBr(allTracts.group, "MedRent.inf"),
+                    name = "Rent\n(Quintile Breaks)") +
+  labs(title = "Median Rent 2009-2016", subtitle = "Real Dollars") +
+  facet_wrap(~year)+
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
+
+# Indicator Map #2: Population in 2009 & 2016, showing TOD
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = q5(TotalPop)), lwd = 0) +
+  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  scale_fill_manual(values = palette5,
+                    labels = qBr(allTracts.group, "TotalPop"),
+                    name = "Population\n(Quintile Breaks)") +
+  labs(title = "Population 2009-2016") +
+  facet_wrap(~year)+
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
+
+# Indicator Map #3: Poverty (% of TotalPop) in 2009 & 2016, showing TOD
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = q5(pctPoverty)), lwd = 0) +
+  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  scale_fill_manual(values = palette5,
+                    labels = qBr(allTracts.group, "pctPoverty"), #JW: NEED TO SHOW 2 DECIMAL PTS
+                    name = "% Poverty\n(Quintile Breaks)") +
+  labs(title = "Poverty 2009-2016", subtitle="% of total population") +
+  facet_wrap(~year)+
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
+
+# Indicator Map #4: Bachelor Degree Holders in 2009 & 2016, showing TOD
+ggplot(allTracts.group)+
+  geom_sf(data = st_union(tracts09))+
+  geom_sf(aes(fill = q5(pctBachelors)), lwd = 0) +
+  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  scale_fill_manual(values = palette5,
+                    labels = qBr(allTracts.group, "pctBachelors"),
+                    name = "Population\n(Quintile Breaks)") +
+  labs(title = "Bachelor Degree Holders 2009-2016", subtitle="% of total population") +
+  facet_wrap(~year)+
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
+
+# --- Part 3. TOD Grouped Bar Plots ------
+
+# Created grouped bar plot comparing:
+# % bachelor's degree holders, % poverty rate, % white, total population, and median rent
+
+allTracts.Summary %>%
+  gather(Variable, Value, -year, -TOD) %>%
+  ggplot(aes(year, Value, fill = TOD)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Variable, scales = "free", ncol=5) +
+  scale_fill_manual(values = c("#bae4bc", "#0868ac")) +
+  labs(title = "Indicator differences across time and space") +
+  plotTheme() + theme(legend.position="bottom")
+
+# --- Part 4. TOD Indicator Tables ----
+
+allTracts.Summary <- 
+  st_drop_geometry(allTracts.group) %>%
+  group_by(TOD, year) %>% # func to summarize by a number of factors
+  summarize(Rent = mean(MedRent, na.rm = T),
+            Population = mean(TotalPop, na.rm = T),
+            Percent_White = mean(pctWhite, na.rm = T),
+            Percent_Bach = mean(pctBachelors, na.rm = T),
+            Percent_Poverty = mean(pctPoverty, na.rm = T))
+
+kable(allTracts.Summary) %>%
+  kable_styling() %>%
+  footnote(general_title = "\n",
+           general = "Table 2.2")
+
+# ---- Part 5. Graduated Symbol Maps ----
 
 
+# ---- Part 6. Line Plot as Function of Distance ----
 
-#All crimes in Queens, 2006-present
-QNScrimedat <- 
+
+# ---- Part 7. Crime Data ----
+
+QNScrimedat <-  
+  rbind(
     st_read("https://data.cityofnewyork.us/resource/qgea-i56i.geojson") %>%
-    dplyr::filter(boro_nm == "QUEENS") %>%
-    select(rpt_dt, boro_nm, ky_cd, ofns_desc,x_coord_cd,y_coord_cd, latitude, longitude, geometry,vic_sex,law_cat_cd) %>%
-  st_transform('ESRI:102318') %>%
-  st_sf()
+      dplyr::select(rpt_dt, boro_nm, ky_cd, ofns_desc, law_cat_cd, x_coord_cd, y_coord_cd, latitude, longitude, vic_sex) %>%
+      dplyr::filter(boro_nm == "QUEENS") %>%
+      st_transform('ESRI:102318') %>%
+      st_sf())
 
+QNScrimedat$year <- format(as.Date(QNScrimedat$rpt_dt, format="%Y/%m/%d"),"%Y")
 View(QNScrimedat)
-
-
-#Julian's newly added code....
-QNScrimedat$Year <- format(as.Date(QNScrimedat$rpt_dt, format="%Y/%m/%d"),"%Y")
-View(QNScrimedat)
-
-
 
 ggplot(allTracts.group)+
   geom_sf(data = st_union(tracts09))+
   geom_sf(aes(fill = TOD)) +
-  geom_sf(data=QNScrimedat, show.legend = "point") +
+  geom_sf(data=QNScrimedat, 
+          show.legend = "point", size= 1.5) +
   mapTheme()
-
-
-
-#CrimeDataFilter by Year
-#Clips subway lines for Queens
-#Create buffers and unionize them
-
-
-#Questions for Ken
-#1. Mapping Crime Data
-  #How to do mapping by points
-  #WestHempfield_BuildingsPlot from chapter...no code
-  #Multiple layers aka 2 or 3 geom_sf
-  #Do I need two different DFs (2009 & 2016) for mapping?
-#2. Buffer chart looks like only buffers
-    
-  
-
-
 
 
