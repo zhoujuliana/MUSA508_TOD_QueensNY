@@ -388,6 +388,31 @@ kable(allTracts.Summary) %>%
 
 # ---- Part 5. Graduated Symbol Maps ----
 
+selectCentroids <-
+  st_centroid(tracts16)[buffer,] %>%
+  st_drop_geometry() %>%
+  left_join(dplyr::select(tracts16, GEOID)) %>%
+  st_sf() %>%
+  dplyr::select(TotalPop, MedRent) %>%
+  mutate(Selection_Type = "Select by Centroids")
+
+centers <- st_centroid(selectCentroids)
+
+ggplot() +
+  geom_sf(data = allTracts.group, fill = "white") +
+  geom_sf(data = centers, aes(size = TotalPop), shape = 21, fill = "red", alpha=0.6,show.legend = "point") +
+  geom_sf(data = buffer, fill = "transparent", color = "blue")+
+  scale_size_continuous(range = c(0,6))+
+  labs(title = "Population Density and Transit", subtitle = "Queens, NYC", caption ="1/4 Mile to MTA Station")
+
+  #Errors - doesn't like size = Medrent
+ggplot() +
+  geom_sf(data = allTracts.group, fill = "white") +
+  geom_sf(data = centers, aes(size = MedRent), shape = 21, fill = "green", alpha=0.6,show.legend = "point") +
+  geom_sf(data = buffer, fill = "transparent", color = "blue")+
+  scale_size_continuous(range = c(0,6))+
+  labs(title = "Median Rent and Transit", subtitle = "Queens, NYC", caption ="1/4 Mile to MTA Station")
+
 
 # ---- Part 6. Line Plot as Function of Distance ----
 
