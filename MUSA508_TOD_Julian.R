@@ -406,8 +406,11 @@ allTracts.rings <-
 #graph
 ggplot(data=allTracts.rings,
        aes(x = distance, y = Rent, colour = year)) +
-  geom_point()+
-  geom_line()
+  geom_point()+scale_x_continuous(minor_breaks = .2, limits=c(0,1.5))+
+  geom_line()+
+  xlab("Miles")+
+  ylab("Average Rent")+
+  labs(title = "Rent as a Function of Distance to Subway Stations", subtitle="Census Tracts")
 
 
 # ---- Part 7. Crime Data ----
