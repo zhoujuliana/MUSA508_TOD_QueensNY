@@ -450,7 +450,8 @@ ggplot() +
        subtitle = "1/4 Mile Ring Buffers", 
        caption ="Figure 6.0")
 
-# Create 
+# Determine tracts that intersect with each ring buffer, 
+# and calculate mean MedRent and distance from MTA station
 
 allTracts.rings <- rbind(
   st_intersection(ring_buffer, allTracts.group) %>%
@@ -460,32 +461,41 @@ allTracts.rings <- rbind(
   mutate(avgMedRent = mean(MedRent, na.rm = TRUE), 
          distance = distance / 5280, na.rm = TRUE))
 
-# Graph Rent by Year and Distance from Subway Station
+# Graph Average Rent by Year and Distance from Subway Station
 
 ggplot(data=allTracts.rings,
        aes(x = distance, y = avgMedRent, color = year)) +
   geom_point() +
   geom_line(size = 1.25) + 
-  labs(title = "Average Rent by Year and Distance from Subway", 
-       subtitle = "1/4 Mile Ring Buffers", 
-       caption ="Figure 6.1")
+  scale_x_continuous(breaks=seq(0, 2, by = 0.25)) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  xlab(label = "Distance from Subway (miles)") +
+  ylab(label = "Avg. Median Income (by Tract)") +
+  labs(title = "Average Rent by Distance from Subway",
+       subtitle = "1/4 Mile Ring Buffers",
+       caption ="Figure 6.1") +
+  plotTheme()
 
 # ---- Part 7. Crime Data ----
 
+# Read crime data in from GitHub .csv file (manually filtered down from 6.9M rows to ~2,900 rows,
+# showing only robberies in Queens in 2016)
 QNSrobbery16 <- 
   rbind(
     read.csv("/Users/julianazhou/Documents/GitHub/MUSA508_TOD_QueensNY/NYPD_Complaint_Data_2016.csv") %>% 
     dplyr::select(OFNS_DESC, VIC_RACE, VIC_SEX, Y = Latitude, X = Longitude) %>%
     na.omit() %>%
-  st_as_sf(coords = c("X", "Y"), crs = 2263, agr = "constant")) 
+  st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant")) 
 
 ggplot()+
-  geom_sf(data=tracts16) + 
-  geom_sf(data=QNSrobbery16, 
-          show.legend = "point", size= 1.5) +
+  geom_sf(data = st_union(tracts16))+
+  geom_sf(data = QNSrobbery16, show.legend = "point", size= .5, alpha = 0.5) +
+  geom_sf(data = buffer, fill = "transparent", color = "#e43219", lwd = 1) +
+  geom_sf(data = QnsMTA, color = "#e43219", size = 1.5)+
+  scale_fill_manual(values = palette5,
+                    labels = qBr(allTracts.group, "MedRent"),
+                    name = "Robberies") +
+  labs(title = "Robberies in 2016", subtitle = "# of Complaints to NYPD") +
   coord_sf(crs = st_crs(2263)) +
-  mapTheme()
-
-dput(QNSrobbery16[1:5,])
-
-
+  mapTheme() + 
+  theme(plot.title = element_text(size=22))
