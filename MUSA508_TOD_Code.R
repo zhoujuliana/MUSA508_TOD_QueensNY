@@ -438,28 +438,18 @@ ggplot(data=allTracts.rings_summary,
 
 # ---- Part 7. Crime Data ----
 
-crime_url = "https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Historic/qgea-i56i"
-token = "jegityh6EZNecHwu90EIPMnUe"
+QNSrobbery16 <- 
+  rbind(
+    read.csv("/Users/julianazhou/Documents/GitHub/MUSA508_TOD_QueensNY/NYPD_Complaint_Data_2016.csv") %>% 
+    dplyr::select(OFNS_DESC, VIC_RACE, VIC_SEX, Y = Latitude, X = Longitude) %>%
+    na.omit() %>%
+  st_as_sf(coords = c("X", "Y"), crs = 2263, agr = "constant")) 
 
-QNScrimedat <-   
-  read.socrata(
-    "https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Historic/qgea-i56i?boro_nm=QUEENS", 
-    app_token = token)
-
-QNScrimedat <- 
-  read.socrata("https://data.cityofnewyork.us/Public-Safety/NYPD-Complaint-Data-Historic/qgea-i56i") %>%
-  filter(boro_name == "Queens") %>%
-  dplyr::select(Y = latitude, X = longitude) %>%
-  na.omit() %>%
-  st_as_sf(coords = c("X", "Y"), crs = 2263, agr = "constant") %>%
-  st_transform('ESRI:102318') %>%
-  distinct()
-
-ggplot(allTracts.group)+
-  geom_sf(data = st_union(tracts09))+
-  geom_sf(aes(fill = TOD)) +
-  geom_sf(data=QNScrimedat, 
+ggplot()+
+  geom_sf(data=tracts16) + 
+  geom_sf(data=QNSrobbery16, 
           show.legend = "point", size= 1.5) +
+  coord_sf(crs = st_crs(2263))
   mapTheme()
 
 
