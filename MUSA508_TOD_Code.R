@@ -1,6 +1,6 @@
 # MUSA 508 TOD Assignment #1 Code - New York City (Queens County)
-# 9/20/2020
-# By: Juliana Zhou & Julian Hartwell
+# 9/25/2020
+# Collaborators: Juliana Zhou & Julian Hartwell
 
 #---- Set Up ----
 
@@ -476,7 +476,7 @@ ggplot(data=allTracts.rings,
        caption ="Figure 6.1") +
   plotTheme()
 
-# ---- Part 7. Crime Data ----
+# ---- Part 7. 2016 Crime Data ----
 
 # Read crime data in from GitHub .csv file (manually filtered down from 6.9M rows to ~2,900 rows,
 # showing only robberies in Queens in 2016)
