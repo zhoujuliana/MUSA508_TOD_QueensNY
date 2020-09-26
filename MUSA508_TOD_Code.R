@@ -4,8 +4,6 @@
 
 #---- Set Up ----
 
-install.packages("viridis")
-
 # Load Libraries
 
 library(tidyverse)
