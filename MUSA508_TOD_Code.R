@@ -305,10 +305,10 @@ ggplot(allTracts.group)+
   theme(plot.title = element_text(size=22))
 
 # Indicator Map #1: Median rent in 2009 & 2016, showing TOD
-ggplot(allTracts.group)+
+ggplot(allTracts.group) + 
   geom_sf(data = st_union(tracts09))+
   geom_sf(aes(fill = q5(MedRent.inf)), lwd = 0) +
-  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  geom_sf(data = buffer, fill = "transparent", color = "red", size = 1)+
   scale_fill_manual(values = palette5,
                     labels = qBr(allTracts.group, "MedRent.inf"),
                     name = "Rent\n(Quintile Breaks)") +
@@ -321,7 +321,7 @@ ggplot(allTracts.group)+
 ggplot(allTracts.group)+
   geom_sf(data = st_union(tracts09))+
   geom_sf(aes(fill = q5(TotalPop)), lwd = 0) +
-  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  geom_sf(data = buffer, fill = "transparent", color = "red", size = 1)+
   scale_fill_manual(values = palette5,
                     labels = qBr(allTracts.group, "TotalPop"),
                     name = "Population\n(Quintile Breaks)") +
@@ -334,7 +334,7 @@ ggplot(allTracts.group)+
 ggplot(allTracts.group)+
   geom_sf(data = st_union(tracts09))+
   geom_sf(aes(fill = q5(pctPoverty)), lwd = 0) +
-  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  geom_sf(data = buffer, fill = "transparent", color = "red", size = 1)+
   scale_fill_manual(values = palette5,
                     labels = qBr(allTracts.group, "pctPoverty"), #JW: NEED TO SHOW 2 DECIMAL PTS
                     name = "% Poverty\n(Quintile Breaks)") +
@@ -347,7 +347,7 @@ ggplot(allTracts.group)+
 ggplot(allTracts.group)+
   geom_sf(data = st_union(tracts09))+
   geom_sf(aes(fill = q5(pctBachelors)), lwd = 0) +
-  geom_sf(data = buffer, fill = "transparent", color = "red")+
+  geom_sf(data = buffer, fill = "transparent", color = "red", size = 1) +
   scale_fill_manual(values = palette5,
                     labels = qBr(allTracts.group, "pctBachelors"),
                     name = "Population\n(Quintile Breaks)") +
