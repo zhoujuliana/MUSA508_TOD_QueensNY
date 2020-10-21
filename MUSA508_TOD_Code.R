@@ -12,6 +12,7 @@ library(sf)
 library(kableExtra)
 library(viridis)
 library(RSocrata)
+library(rmarkdown)
 
 options(scipen=999)
 options(tigris_class = "sf")
